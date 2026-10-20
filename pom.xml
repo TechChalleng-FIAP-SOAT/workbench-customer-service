@@ -18,8 +18,9 @@
 		<java.version>21</java.version>
 		<jacoco.version>0.8.14</jacoco.version>
 		<sonar.maven.plugin.version>5.5.0.6356</sonar.maven.plugin.version>
-		<sonar.projectKey>customer-service</sonar.projectKey>
-		<sonar.projectName>customer-service</sonar.projectName>
+		<sonar.organization>techchalleng-fiap-soat</sonar.organization>
+		<sonar.projectKey>TechChalleng-FIAP-SOAT_workbench-customer-service</sonar.projectKey>
+		<sonar.projectName>workbench-customer-service</sonar.projectName>
 		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
 		<sonar.coverage.jacoco.xmlReportPaths>target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
 	</properties>
