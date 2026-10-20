@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: customer-service-config
+  namespace: customer-service
+data:
+  SERVER_PORT: "8080"
+  SPRING_APPLICATION_NAME: customer-service
+  SPRING_DATASOURCE_URL: jdbc:postgresql://customer-db:5432/customer
+  DD_ENV: "local"
+  DD_SERVICE: "customer-service"
+  DD_VERSION: "1.0.0"
+  DD_METRICS_ENABLED: "true"
+  DD_METRICS_URI: "https://api.datadoghq.com"
