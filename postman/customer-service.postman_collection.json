@@ -1,0 +1,102 @@
+{
+  "info": {
+    "name": "Workbench - Customer Service",
+    "description": "Collection do microsserviço de Clientes e Veículos (Fase 4). Cadastro base usado pelo fluxo da Ordem de Serviço. Variáveis: baseUrl (default http://localhost:8080), token (JWT HS256).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {"key": "baseUrl", "value": "http://localhost:8080"},
+    {"key": "token", "value": ""},
+    {"key": "clientId", "value": "1"}
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{"key": "token", "value": "{{token}}", "type": "string"}]
+  },
+  "item": [
+    {
+      "name": "Clients",
+      "item": [
+        {
+          "name": "Criar cliente",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": {"raw": "{{baseUrl}}/api/clients", "host": ["{{baseUrl}}"], "path": ["api", "clients"]},
+            "body": {"mode": "raw", "raw": "{\n  \"name\": \"Maria Oliveira\",\n  \"document\": \"52998224725\",\n  \"email\": \"maria@example.com\",\n  \"phone\": \"11999990000\"\n}"}
+          }
+        },
+        {
+          "name": "Listar clientes ativos",
+          "request": {"method": "GET", "url": {"raw": "{{baseUrl}}/api/clients", "host": ["{{baseUrl}}"], "path": ["api", "clients"]}}
+        },
+        {
+          "name": "Buscar cliente por ID",
+          "request": {"method": "GET", "url": {"raw": "{{baseUrl}}/api/clients/{{clientId}}", "host": ["{{baseUrl}}"], "path": ["api", "clients", "{{clientId}}"]}}
+        },
+        {
+          "name": "Buscar cliente por CPF/CNPJ",
+          "request": {"method": "GET", "url": {"raw": "{{baseUrl}}/api/clients/document/52998224725", "host": ["{{baseUrl}}"], "path": ["api", "clients", "document", "52998224725"]}}
+        },
+        {
+          "name": "Atualizar cliente",
+          "request": {
+            "method": "PUT",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": {"raw": "{{baseUrl}}/api/clients/{{clientId}}", "host": ["{{baseUrl}}"], "path": ["api", "clients", "{{clientId}}"]},
+            "body": {"mode": "raw", "raw": "{\n  \"name\": \"Maria Oliveira Silva\",\n  \"email\": \"maria.silva@example.com\",\n  \"phone\": \"11988887777\"\n}"}
+          }
+        },
+        {
+          "name": "Desativar cliente",
+          "request": {"method": "DELETE", "url": {"raw": "{{baseUrl}}/api/clients/{{clientId}}", "host": ["{{baseUrl}}"], "path": ["api", "clients", "{{clientId}}"]}}
+        }
+      ]
+    },
+    {
+      "name": "Vehicles",
+      "item": [
+        {
+          "name": "Criar veículo",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": {"raw": "{{baseUrl}}/api/vehicles", "host": ["{{baseUrl}}"], "path": ["api", "vehicles"]},
+            "body": {"mode": "raw", "raw": "{\n  \"clientId\": {{clientId}},\n  \"plate\": \"ABC-1234\",\n  \"brand\": \"Volkswagen\",\n  \"model\": \"Gol\",\n  \"year\": 2018,\n  \"color\": \"Prata\",\n  \"type\": \"CARRO\"\n}"}
+          }
+        },
+        {
+          "name": "Buscar veículo por ID",
+          "request": {"method": "GET", "url": {"raw": "{{baseUrl}}/api/vehicles/1", "host": ["{{baseUrl}}"], "path": ["api", "vehicles", "1"]}}
+        },
+        {
+          "name": "Buscar veículo por placa",
+          "request": {"method": "GET", "url": {"raw": "{{baseUrl}}/api/vehicles/plate/ABC-1234", "host": ["{{baseUrl}}"], "path": ["api", "vehicles", "plate", "ABC-1234"]}}
+        },
+        {
+          "name": "Listar veículos de um cliente",
+          "request": {"method": "GET", "url": {"raw": "{{baseUrl}}/api/vehicles/client/{{clientId}}", "host": ["{{baseUrl}}"], "path": ["api", "vehicles", "client", "{{clientId}}"]}}
+        },
+        {
+          "name": "Atualizar veículo",
+          "request": {
+            "method": "PUT",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": {"raw": "{{baseUrl}}/api/vehicles/1", "host": ["{{baseUrl}}"], "path": ["api", "vehicles", "1"]},
+            "body": {"mode": "raw", "raw": "{\n  \"plate\": \"ABC-1234\",\n  \"brand\": \"Volkswagen\",\n  \"model\": \"Gol G6\",\n  \"year\": 2019,\n  \"color\": \"Preto\",\n  \"type\": \"CARRO\"\n}"}
+          }
+        },
+        {
+          "name": "Desativar veículo",
+          "request": {"method": "DELETE", "url": {"raw": "{{baseUrl}}/api/vehicles/1", "host": ["{{baseUrl}}"], "path": ["api", "vehicles", "1"]}}
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {"name": "Health check", "request": {"method": "GET", "auth": {"type": "noauth"}, "url": {"raw": "{{baseUrl}}/actuator/health", "host": ["{{baseUrl}}"], "path": ["actuator", "health"]}}}
+      ]
+    }
+  ]
+}
