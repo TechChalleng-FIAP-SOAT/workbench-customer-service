@@ -93,6 +93,29 @@
       ]
     },
     {
+      "name": "Users (identidade staff)",
+      "item": [
+        {
+          "name": "Cadastrar usuário staff (signup)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": {"raw": "{{baseUrl}}/api/users/signup", "host": ["{{baseUrl}}"], "path": ["api", "users", "signup"]},
+            "body": {"mode": "raw", "raw": "{\n  \"email\": \"tecnico@workbench.dev\",\n  \"password\": \"segredo123\",\n  \"roles\": [\"TECHNICIAN\"]\n}"}
+          }
+        },
+        {
+          "name": "Validar credenciais (uso interno da Lambda)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": {"raw": "{{baseUrl}}/api/users/auth/validate", "host": ["{{baseUrl}}"], "path": ["api", "users", "auth", "validate"]},
+            "body": {"mode": "raw", "raw": "{\n  \"email\": \"admin@workbench.dev\",\n  \"password\": \"admin123\"\n}"}
+          }
+        }
+      ]
+    },
+    {
       "name": "Health",
       "item": [
         {"name": "Health check", "request": {"method": "GET", "auth": {"type": "noauth"}, "url": {"raw": "{{baseUrl}}/actuator/health", "host": ["{{baseUrl}}"], "path": ["actuator", "health"]}}}
