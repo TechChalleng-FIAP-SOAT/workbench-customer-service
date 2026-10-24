@@ -147,16 +147,29 @@ Manifests em `k8s/`. Deploy automatizado pelo pipeline (`deploy-aws`, quando
 
 ## Referência de endpoints
 
+### Segurança (JWT)
+
+Defesa em profundidade: o serviço **valida o JWT por conta própria** (Spring Security +
+filtro HS256 com o `JWT_SECRET` compartilhado), inclusive nas chamadas internas de outros
+serviços. Rotas **públicas** (sem token): `GET /actuator/health*`, Swagger/OpenAPI e
+`POST /api/users/auth/validate` (a Lambda de auth valida credenciais aqui **antes** de
+emitir o token). `POST /api/users/signup` exige **ADMIN**. As consultas (`GET`) de
+clientes/veículos são liberadas ao cliente dono (`ROLE_CLIENT`) e ao staff; escrita exige
+ADMIN/TECHNICIAN.
+
+> As chamadas servidor-a-servidor (ex.: o os-service consultando cliente/veículo) usam um
+> **token de serviço** emitido pelo chamador com o mesmo segredo.
+
 Clientes — `/api/clients`:
 
-| Método | Rota | Descrição |
-|---|---|---|
-| POST | `/api/clients` | Criar cliente |
-| GET | `/api/clients` | Listar clientes ativos |
-| GET | `/api/clients/{id}` | Buscar por ID |
-| GET | `/api/clients/document/{document}` | Buscar por CPF ou CNPJ |
-| PUT | `/api/clients/{id}` | Atualizar nome/email/telefone |
-| DELETE | `/api/clients/{id}` | Desativar (soft delete) |
+| Método | Rota | Descrição | Acesso |
+|---|---|---|---|
+| POST | `/api/clients` | Criar cliente | staff |
+| GET | `/api/clients` | Listar clientes ativos | cliente/staff |
+| GET | `/api/clients/{id}` | Buscar por ID | cliente/staff |
+| GET | `/api/clients/document/{document}` | Buscar por CPF ou CNPJ | cliente/staff |
+| PUT | `/api/clients/{id}` | Atualizar nome/email/telefone | staff |
+| DELETE | `/api/clients/{id}` | Desativar (soft delete) | staff |
 
 Veículos — `/api/vehicles`:
 
@@ -173,8 +186,8 @@ Identidade (staff) — `/api/users`:
 
 | Método | Rota | Descrição |
 |---|---|---|
-| POST | `/api/users/signup` | Cadastrar usuário staff (senha BCrypt; roles ADMIN/TECHNICIAN) |
-| POST | `/api/users/auth/validate` | Validar credenciais (uso interno da Lambda de auth) → `200 {email,roles}` ou `401` |
+| POST | `/api/users/signup` | Cadastrar usuário staff (senha BCrypt; roles ADMIN/TECHNICIAN) — **só ADMIN** |
+| POST | `/api/users/auth/validate` | Validar credenciais (uso interno da Lambda de auth) → `200 {email,roles}` ou `401` — **público** |
 
 > **Seed inicial:** a migration cria o usuário `admin@workbench.dev` (role `ADMIN`,
 > senha `admin123` — trocar em produção) para viabilizar o primeiro login de staff.
