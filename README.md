@@ -1,8 +1,9 @@
 # workbench-customer-service — Customer Service
 
-Microsserviço de **clientes e veículos** da plataforma Workbench (Tech Challenge —
-FIAP Pós Tech, Fase 4). Dono do cadastro de clientes (CPF/CNPJ) e veículos, com as
-validações de domínio.
+Microsserviço de **clientes, veículos e identidade (usuários staff)** da plataforma
+Workbench (Tech Challenge — FIAP Pós Tech, Fase 4). Dono do cadastro de clientes
+(CPF/CNPJ) e veículos, com as validações de domínio, e também do **cadastro de
+usuários staff** (ADMIN/TECHNICIAN) — a plataforma o usa como serviço de identidade.
 
 > **Contexto (Fase 4):** na Fase 3 a oficina era um **monólito** (`workbench-monolith`,
 > mantido como base histórica). Na Fase 4 a aplicação foi refatorada em
@@ -37,6 +38,10 @@ validações de domínio.
 - Cadastro e consulta de **veículos**, com validação de **placa** (formato antigo e
   Mercosul) e **vínculo obrigatório** a um cliente existente (FK `vehicles.client_id`)
 - Soft delete (desativação) de clientes e veículos
+- **Identidade de staff**: cadastro de usuários ADMIN/TECHNICIAN com senha **BCrypt**
+  e validação de credenciais (consumida pela Lambda de auth para emitir o JWT de
+  staff). Preserva o login de staff que existia no monólito, agora como serviço de
+  identidade dedicado.
 
 ---
 
@@ -61,11 +66,12 @@ validações de domínio.
 
 | Consumidor | Chamada | Para quê |
 |---|---|---|
-| **OS Service** | `GET /api/clients/document/{cpf}` e `GET /api/vehicles/plate/{placa}` | Validar cliente/veículo ao criar a OS |
-| **Lambda de auth** | `GET /api/clients/document/{cpf}` | Resolver o cliente por CPF ao emitir o JWT |
+| **OS Service** | `GET /api/clients/document/{cpf}` e `GET /api/vehicles/plate/{placa}` | Validar cliente/veículo ao criar a OS; resolver o e-mail do cliente para a notificação de status |
+| **Lambda de auth (cliente)** | `GET /api/clients/document/{cpf}` | Resolver o cliente por CPF ao emitir o JWT de cliente |
+| **Lambda de auth (staff)** | `POST /api/users/auth/validate` | Validar e-mail/senha do staff ao emitir o JWT de staff |
 
-Ambos deixaram de ler a tabela de clientes diretamente (ADR-0003: nenhum serviço
-acessa o banco de outro) e passaram a consultar este serviço por REST.
+Todos deixaram de ler o banco diretamente (ADR-0003: nenhum serviço acessa o banco de
+outro) e passaram a consultar este serviço por REST.
 
 ---
 
@@ -76,9 +82,9 @@ src/main/java/com/workbench/workshop/
 ├── adapter/
 │   ├── in/web/            # ClientController, VehicleController (+ DTOs)
 │   └── out/persistence/   # Adapters JPA (client, vehicle)
-├── application/           # Use cases + ports (ClientUseCases, VehicleUseCases)
-├── domain/                # Client + Document/Cpf/Cnpj; Vehicle + LicensePlate; exceções
-└── infrastructure/        # config (@UpperCase, GlobalExceptionHandler), persistence (JPA)
+├── application/           # Use cases + ports (ClientUseCases, VehicleUseCases, UserUseCases)
+├── domain/                # Client + Document/Cpf/Cnpj; Vehicle + LicensePlate; User + Role; exceções
+└── infrastructure/        # config (@UpperCase, GlobalExceptionHandler, PasswordConfig/BCrypt), persistence (JPA)
 ```
 
 ---
@@ -141,16 +147,40 @@ Manifests em `k8s/`. Deploy automatizado pelo pipeline (`deploy-aws`, quando
 
 ## Referência de endpoints
 
+### Segurança (JWT)
+
+Defesa em profundidade: o serviço **valida o JWT por conta própria** (Spring Security +
+filtro HS256 com o `JWT_SECRET` compartilhado), inclusive nas chamadas internas de outros
+serviços. Rotas **públicas** (sem token): `GET /actuator/health*`, Swagger/OpenAPI e
+`POST /api/users/auth/validate` (a Lambda de auth valida credenciais aqui **antes** de
+emitir o token). `POST /api/users/signup` exige **ADMIN**. As consultas (`GET`) de
+clientes/veículos são liberadas ao cliente dono (`ROLE_CLIENT`) e ao staff; escrita exige
+ADMIN/TECHNICIAN.
+
+> As chamadas servidor-a-servidor (ex.: o os-service consultando cliente/veículo) usam um
+> **token de serviço** emitido pelo chamador com o mesmo segredo.
+
+#### Boas práticas OWASP aplicadas
+- **A01/A07:** autorização por role; JWT validado pelo serviço.
+- **A02 (criptografia):** senha de staff com **BCrypt** (nunca em texto puro).
+- **A03 (validação):** `@Valid` nos DTOs; CPF/CNPJ e placa validados (dígitos
+  verificadores/regex); acesso a dados via Spring Data JPA parametrizado.
+- **A05:** headers `X-Frame-Options: DENY` + `nosniff`; `k8s/secret.yaml` com
+  placeholders (`REPLACE_ME`), segredos reais via secret manager.
+- **A09:** CPF mascarado no log (MDC).
+
+> Hotspot `java:S4502` (CSRF disabled) marcado **Safe**: API REST stateless com JWT.
+
 Clientes — `/api/clients`:
 
-| Método | Rota | Descrição |
-|---|---|---|
-| POST | `/api/clients` | Criar cliente |
-| GET | `/api/clients` | Listar clientes ativos |
-| GET | `/api/clients/{id}` | Buscar por ID |
-| GET | `/api/clients/document/{document}` | Buscar por CPF ou CNPJ |
-| PUT | `/api/clients/{id}` | Atualizar nome/email/telefone |
-| DELETE | `/api/clients/{id}` | Desativar (soft delete) |
+| Método | Rota | Descrição | Acesso |
+|---|---|---|---|
+| POST | `/api/clients` | Criar cliente | staff |
+| GET | `/api/clients` | Listar clientes ativos | cliente/staff |
+| GET | `/api/clients/{id}` | Buscar por ID | cliente/staff |
+| GET | `/api/clients/document/{document}` | Buscar por CPF ou CNPJ | cliente/staff |
+| PUT | `/api/clients/{id}` | Atualizar nome/email/telefone | staff |
+| DELETE | `/api/clients/{id}` | Desativar (soft delete) | staff |
 
 Veículos — `/api/vehicles`:
 
@@ -162,6 +192,16 @@ Veículos — `/api/vehicles`:
 | GET | `/api/vehicles/client/{clientId}` | Listar veículos de um cliente |
 | PUT | `/api/vehicles/{id}` | Atualizar |
 | DELETE | `/api/vehicles/{id}` | Desativar (soft delete) |
+
+Identidade (staff) — `/api/users`:
+
+| Método | Rota | Descrição |
+|---|---|---|
+| POST | `/api/users/signup` | Cadastrar usuário staff (senha BCrypt; roles ADMIN/TECHNICIAN) — **só ADMIN** |
+| POST | `/api/users/auth/validate` | Validar credenciais (uso interno da Lambda de auth) → `200 {email,roles}` ou `401` — **público** |
+
+> **Seed inicial:** a migration cria o usuário `admin@workbench.dev` (role `ADMIN`,
+> senha `admin123` — trocar em produção) para viabilizar o primeiro login de staff.
 
 ---
 

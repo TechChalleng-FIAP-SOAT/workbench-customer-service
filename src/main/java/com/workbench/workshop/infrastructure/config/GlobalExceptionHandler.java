@@ -35,6 +35,12 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.BAD_REQUEST, 400, ex.getMessage());
     }
 
+    @ExceptionHandler(com.workbench.workshop.application.user.UserUseCases.BadCredentialsException.class)
+    public ResponseEntity<Map<String, Object>> handleBadCredentials(
+            com.workbench.workshop.application.user.UserUseCases.BadCredentialsException ex) {
+        return error(HttpStatus.UNAUTHORIZED, 401, ex.getMessage());
+    }
+
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalState(IllegalStateException ex) {
         return error(HttpStatus.CONFLICT, 409, ex.getMessage());
