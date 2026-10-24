@@ -160,6 +160,17 @@ ADMIN/TECHNICIAN.
 > As chamadas servidor-a-servidor (ex.: o os-service consultando cliente/veículo) usam um
 > **token de serviço** emitido pelo chamador com o mesmo segredo.
 
+#### Boas práticas OWASP aplicadas
+- **A01/A07:** autorização por role; JWT validado pelo serviço.
+- **A02 (criptografia):** senha de staff com **BCrypt** (nunca em texto puro).
+- **A03 (validação):** `@Valid` nos DTOs; CPF/CNPJ e placa validados (dígitos
+  verificadores/regex); acesso a dados via Spring Data JPA parametrizado.
+- **A05:** headers `X-Frame-Options: DENY` + `nosniff`; `k8s/secret.yaml` com
+  placeholders (`REPLACE_ME`), segredos reais via secret manager.
+- **A09:** CPF mascarado no log (MDC).
+
+> Hotspot `java:S4502` (CSRF disabled) marcado **Safe**: API REST stateless com JWT.
+
 Clientes — `/api/clients`:
 
 | Método | Rota | Descrição | Acesso |
