@@ -1,6 +1,5 @@
 package com.workbench.workshop.infrastructure.security;
 
-import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -10,6 +9,9 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.CrossOriginEmbedderPolicyHeaderWriter.CrossOriginEmbedderPolicy;
+import org.springframework.security.web.header.writers.CrossOriginOpenerPolicyHeaderWriter.CrossOriginOpenerPolicy;
+import org.springframework.security.web.header.writers.CrossOriginResourcePolicyHeaderWriter.CrossOriginResourcePolicy;
 
 /**
  * Segurança do Customer Service (defesa em profundidade: cada serviço valida o JWT).
@@ -29,8 +31,12 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
+    private final JsonSecurityErrorHandler errorHandler;
 
-    public SecurityConfig(JwtFilter jwtFilter) { this.jwtFilter = jwtFilter; }
+    public SecurityConfig(JwtFilter jwtFilter, JsonSecurityErrorHandler errorHandler) {
+        this.jwtFilter = jwtFilter;
+        this.errorHandler = errorHandler;
+    }
 
     // S4502 (CSRF): seguro desabilitar — API REST stateless com JWT (sem cookie de sessão),
     // logo não há vetor de CSRF. Suprimido com justificativa em vez de review manual no Sonar.
@@ -40,9 +46,15 @@ public class SecurityConfig {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .headers(h -> h
-                        .frameOptions(fo -> fo.deny())
-                        .contentTypeOptions(c -> {}))
+                        .frameOptions(fo -> fo.deny())                 // anti-clickjacking (OWASP A05)
+                        .contentTypeOptions(c -> {})                  // X-Content-Type-Options: nosniff
+                        // Isolamento cross-origin (ZAP 90004 / Spectre): a API não é embutida por outros sites.
+                        .crossOriginResourcePolicy(c -> c.policy(CrossOriginResourcePolicy.SAME_ORIGIN))
+                        .crossOriginOpenerPolicy(c -> c.policy(CrossOriginOpenerPolicy.SAME_ORIGIN))
+                        .crossOriginEmbedderPolicy(c -> c.policy(CrossOriginEmbedderPolicy.REQUIRE_CORP)))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // 401/403 em JSON (mesmo formato dos demais erros), não resposta vazia.
+                .exceptionHandling(e -> e.authenticationEntryPoint(errorHandler).accessDeniedHandler(errorHandler))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
@@ -50,13 +62,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/users/auth/validate").permitAll()
                         // Cadastro de usuário staff: só ADMIN.
                         .requestMatchers(HttpMethod.POST, "/api/users/signup").hasRole("ADMIN")
-                        // Consultas de cliente/veículo: cliente dono + staff.
+                        // Listagem de todos os clientes: só staff.
+                        .requestMatchers(HttpMethod.GET, "/api/clients").hasAnyRole("ADMIN", "TECHNICIAN")
+                        // Consultas de cliente/veículo: cliente dono (conferido no caso de uso) + staff.
                         .requestMatchers(HttpMethod.GET, "/api/clients/**", "/api/vehicles/**")
                             .hasAnyRole("CLIENT", "USER", "ADMIN", "TECHNICIAN")
                         .anyRequest().hasAnyRole("ADMIN", "TECHNICIAN"))
-                .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint((request, response, exAuth) ->
-                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, exAuth.getMessage())))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }

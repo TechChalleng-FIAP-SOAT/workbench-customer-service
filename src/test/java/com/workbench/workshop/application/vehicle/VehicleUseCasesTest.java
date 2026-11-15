@@ -1,5 +1,6 @@
 package com.workbench.workshop.application.vehicle;
 
+import com.workbench.workshop.application.Requester;
 import com.workbench.workshop.application.client.port.out.ClientRepository;
 import com.workbench.workshop.application.vehicle.port.out.VehicleRepository;
 import com.workbench.workshop.domain.client.Client;
@@ -21,13 +22,27 @@ class VehicleUseCasesTest {
 
     private VehicleRepository vehicleRepository;
     private ClientRepository clientRepository;
-    private VehicleUseCases useCases;
+    private CreateVehicleUseCase createVehicle;
+    private FindVehicleByIdUseCase findVehicleById;
+    private FindVehicleByPlateUseCase findVehicleByPlate;
+    private ListVehiclesByClientUseCase listVehiclesByClient;
+    private UpdateVehicleUseCase updateVehicle;
+    private DeactivateVehicleUseCase deactivateVehicle;
+
+    private static final Requester STAFF = Requester.staff("admin@workbench.dev");
 
     @BeforeEach
     void setUp() {
         vehicleRepository = mock(VehicleRepository.class);
         clientRepository = mock(ClientRepository.class);
-        useCases = new VehicleUseCases(vehicleRepository, clientRepository);
+        createVehicle = new CreateVehicleUseCase(vehicleRepository, clientRepository);
+        findVehicleById = new FindVehicleByIdUseCase(vehicleRepository, clientRepository);
+        findVehicleByPlate = new FindVehicleByPlateUseCase(vehicleRepository, clientRepository);
+        listVehiclesByClient = new ListVehiclesByClientUseCase(vehicleRepository, clientRepository);
+        updateVehicle = new UpdateVehicleUseCase(vehicleRepository);
+        deactivateVehicle = new DeactivateVehicleUseCase(vehicleRepository);
+        when(clientRepository.getById(any())).thenCallRealMethod();
+        when(vehicleRepository.getById(any())).thenCallRealMethod();
         when(vehicleRepository.save(any())).thenAnswer(i -> i.getArgument(0));
     }
 
@@ -37,10 +52,21 @@ class VehicleUseCasesTest {
     }
 
     @Test
+    void clientCannotSeeAnotherClientsVehicle() {
+        clientExists(); // dono: CPF 52998224725
+        when(vehicleRepository.findByPlate("ABC1234")).thenReturn(Optional.of(
+                Vehicle.reconstitute(1L, 1L, "ABC1234", "VW", "Gol", 2020, "PRATA", VehicleType.CAR, true, null, null)));
+
+        assertThrows(SecurityException.class,
+                () -> findVehicleByPlate.execute("ABC1234", new Requester("11144477735", true)));
+        assertEquals(1L, findVehicleByPlate.execute("ABC1234", new Requester("52998224725", true)).getId());
+    }
+
+    @Test
     void createRequiresExistingClient() {
         when(clientRepository.findById(1L)).thenReturn(Optional.empty());
         assertThrows(ClientNotFoundException.class,
-                () -> useCases.create(1L, "ABC1234", "VW", "Gol", 2020, "PRATA", VehicleType.CAR));
+                () -> createVehicle.execute(1L, "ABC1234", "VW", "Gol", 2020, "PRATA", VehicleType.CAR));
     }
 
     @Test
@@ -48,7 +74,7 @@ class VehicleUseCasesTest {
         clientExists();
         when(vehicleRepository.existsByPlate("ABC1234")).thenReturn(false);
 
-        Vehicle v = useCases.create(1L, "abc-1234", "VW", "Gol", 2020, "prata", VehicleType.CAR);
+        Vehicle v = createVehicle.execute(1L, "abc-1234", "VW", "Gol", 2020, "prata", VehicleType.CAR);
 
         assertEquals("ABC1234", v.getPlate().getValue());
         assertEquals("VW", v.getBrand());
@@ -60,20 +86,20 @@ class VehicleUseCasesTest {
         clientExists();
         when(vehicleRepository.existsByPlate("ABC1234")).thenReturn(true);
         assertThrows(IllegalStateException.class,
-                () -> useCases.create(1L, "ABC1234", "VW", "Gol", 2020, "PRATA", VehicleType.CAR));
+                () -> createVehicle.execute(1L, "ABC1234", "VW", "Gol", 2020, "PRATA", VehicleType.CAR));
     }
 
     @Test
     void findByIdThrowsWhenMissing() {
         when(vehicleRepository.findById(9L)).thenReturn(Optional.empty());
-        assertThrows(VehicleNotFoundException.class, () -> useCases.findById(9L));
+        assertThrows(VehicleNotFoundException.class, () -> findVehicleById.execute(9L, STAFF));
     }
 
     @Test
     void findByPlateNormalizes() {
         when(vehicleRepository.findByPlate("ABC1234")).thenReturn(Optional.of(
                 Vehicle.reconstitute(1L, 1L, "ABC1234", "VW", "Gol", 2020, "PRATA", VehicleType.CAR, true, null, null)));
-        assertEquals(1L, useCases.findByPlate("abc-1234").getId());
+        assertEquals(1L, findVehicleByPlate.execute("abc-1234", STAFF).getId());
     }
 
     @Test
@@ -84,21 +110,21 @@ class VehicleUseCasesTest {
         when(vehicleRepository.existsByPlate("XYZ9876")).thenReturn(true);
 
         assertThrows(IllegalStateException.class,
-                () -> useCases.update(1L, "XYZ9876", "VW", "Gol", 2021, "PRETO", VehicleType.CAR));
+                () -> updateVehicle.execute(1L, "XYZ9876", "VW", "Gol", 2021, "PRETO", VehicleType.CAR));
     }
 
     @Test
     void findByClientValidatesClientThenLists() {
         clientExists();
         when(vehicleRepository.findAllByClientId(1L)).thenReturn(List.of());
-        assertNotNull(useCases.findByClient(1L));
+        assertNotNull(listVehiclesByClient.execute(1L, STAFF));
     }
 
     @Test
     void deactivateSoftDeletes() {
         when(vehicleRepository.findById(1L)).thenReturn(Optional.of(
                 Vehicle.reconstitute(1L, 1L, "ABC1234", "VW", "Gol", 2020, "PRATA", VehicleType.CAR, true, null, null)));
-        useCases.deactivate(1L);
+        deactivateVehicle.execute(1L);
         verify(vehicleRepository).save(argThat(v -> !v.isActive()));
     }
 }

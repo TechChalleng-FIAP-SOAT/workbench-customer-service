@@ -10,7 +10,7 @@ usuários staff** (ADMIN/TECHNICIAN) — a plataforma o usa como serviço de ide
 > **microsserviços independentes**, cada um com seu repositório, infraestrutura e
 > banco próprios. Este repositório é o **Customer Service** — consultado por REST pelo
 > OS Service e pela Lambda de autenticação. A divisão dos serviços e a estratégia da
-> Saga estão nos ADRs (`workbench-monolith/docs/adr` — ADR-0003 e ADR-0005).
+> Saga estão nos ADRs (`workbench-monolith/docs/adr` — ADR-0006 e ADR-0005).
 
 ---
 
@@ -41,7 +41,8 @@ usuários staff** (ADMIN/TECHNICIAN) — a plataforma o usa como serviço de ide
 - **Identidade de staff**: cadastro de usuários ADMIN/TECHNICIAN com senha **BCrypt**
   e validação de credenciais (consumida pela Lambda de auth para emitir o JWT de
   staff). Preserva o login de staff que existia no monólito, agora como serviço de
-  identidade dedicado.
+  identidade dedicado. Senhas erradas seguidas bloqueiam o e-mail por um tempo, e a senha
+  padrão do admin semeado é trocada no start pela de `ADMIN_INITIAL_PASSWORD`.
 
 ---
 
@@ -70,7 +71,7 @@ usuários staff** (ADMIN/TECHNICIAN) — a plataforma o usa como serviço de ide
 | **Lambda de auth (cliente)** | `GET /api/clients/document/{cpf}` | Resolver o cliente por CPF ao emitir o JWT de cliente |
 | **Lambda de auth (staff)** | `POST /api/users/auth/validate` | Validar e-mail/senha do staff ao emitir o JWT de staff |
 
-Todos deixaram de ler o banco diretamente (ADR-0003: nenhum serviço acessa o banco de
+Todos deixaram de ler o banco diretamente (ADR-0006: nenhum serviço acessa o banco de
 outro) e passaram a consultar este serviço por REST.
 
 ---
@@ -80,11 +81,15 @@ outro) e passaram a consultar este serviço por REST.
 ```
 src/main/java/com/workbench/workshop/
 ├── adapter/
-│   ├── in/web/            # ClientController, VehicleController (+ DTOs)
-│   └── out/persistence/   # Adapters JPA (client, vehicle)
-├── application/           # Use cases + ports (ClientUseCases, VehicleUseCases, UserUseCases)
+│   ├── in/web/            # ClientController, VehicleController, UserController + ClientDtos/VehicleDtos/UserDtos
+│   └── out/persistence/   # Adapters JPA (client, vehicle, user)
+├── application/           # Uma classe por caso de uso + ports (getById "ou 404" nas portas)
+│   ├── Requester          # quem pede (subject do JWT + se é cliente) — regra de dono
+│   ├── client/            # Create/FindById/FindByDocument/List/Update/DeactivateClient
+│   ├── vehicle/           # Create/FindById/FindByPlate/ListByClient/Update/DeactivateVehicle
+│   └── user/              # SignUp, AuthenticateUser, LoginAttemptLimiter
 ├── domain/                # Client + Document/Cpf/Cnpj; Vehicle + LicensePlate; User + Role; exceções
-└── infrastructure/        # config (@UpperCase, GlobalExceptionHandler, PasswordConfig/BCrypt), persistence (JPA)
+└── infrastructure/        # config (@UpperCase, GlobalExceptionHandler, PasswordConfig/BCrypt, AdminPasswordInitializer), persistence (JPA)
 ```
 
 ---
@@ -109,8 +114,11 @@ unit-test ──▶ code-analysis ──▶ build ──▶ docker-build-push �
  badge)
 ```
 
-Secrets/variáveis idênticos aos demais serviços (`DOCKER_*`, `SONAR_TOKEN`, `AWS_*`,
-`USE_AWS`).
+Secrets/variáveis comuns aos serviços (`DOCKER_*`, `SONAR_TOKEN`, `AWS_*`, `USE_AWS`) —
+ver o README do `workbench-os-service`. Próprios deste serviço: `DB_URL_CUSTOMER_<ENV>`,
+`DB_USERNAME_CUSTOMER`, `DB_PASSWORD_CUSTOMER`, `JWT_SECRET` e, recomendado,
+`ADMIN_INITIAL_PASSWORD`. O job `deploy-aws` monta o Secret do pod a partir deles (o
+`k8s/secret.yaml` só tem placeholders) e falha no início se faltar um obrigatório.
 
 ---
 
@@ -133,8 +141,14 @@ Secrets/variáveis idênticos aos demais serviços (`DOCKER_*`, `SONAR_TOKEN`, `
 ./mvnw spring-boot:run
 ```
 
-O Flyway cria o schema (clientes + veículos) na subida. Datasource configurável por
-`SPRING_DATASOURCE_URL` (default `jdbc:postgresql://localhost:15434/customer`).
+O Flyway cria o schema (clientes, veículos e usuários) na subida.
+
+| Variável | Default | Descrição |
+|---|---|---|
+| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://localhost:15434/customer` | Banco próprio |
+| `SPRING_DATASOURCE_USERNAME` / `_PASSWORD` | `dbadmin` / dev | Credenciais do banco |
+| `JWT_SECRET` | valor de dev | Segredo HS256 compartilhado |
+| `ADMIN_INITIAL_PASSWORD` | — | (recomendado) substitui `admin123` do admin semeado no start; só enquanto ele ainda usa a padrão, nunca sobrescreve senha já trocada. Vazio = só avisa no log |
 
 ---
 
@@ -153,20 +167,26 @@ Defesa em profundidade: o serviço **valida o JWT por conta própria** (Spring S
 filtro HS256 com o `JWT_SECRET` compartilhado), inclusive nas chamadas internas de outros
 serviços. Rotas **públicas** (sem token): `GET /actuator/health*`, Swagger/OpenAPI e
 `POST /api/users/auth/validate` (a Lambda de auth valida credenciais aqui **antes** de
-emitir o token). `POST /api/users/signup` exige **ADMIN**. As consultas (`GET`) de
-clientes/veículos são liberadas ao cliente dono (`ROLE_CLIENT`) e ao staff; escrita exige
-ADMIN/TECHNICIAN.
+emitir o token). `POST /api/users/signup` exige **ADMIN**. A **listagem de todos os
+clientes** (`GET /api/clients`) é só do staff. As demais consultas (`GET`) de
+clientes/veículos aceitam cliente (`ROLE_CLIENT`) e staff, mas com token de cliente o
+**dono é conferido no caso de uso**: só o próprio cadastro e os próprios veículos (o CPF do
+token tem de ser o do cliente) — outro recebe **403**. Escrita exige ADMIN/TECHNICIAN.
+
+**Limite de login:** 5 senhas erradas seguidas bloqueiam o e-mail por 15 minutos, com a
+mesma resposta de credencial inválida (não revela o bloqueio). A contagem é por réplica.
 
 > As chamadas servidor-a-servidor (ex.: o os-service consultando cliente/veículo) usam um
 > **token de serviço** emitido pelo chamador com o mesmo segredo.
 
 #### Boas práticas OWASP aplicadas
-- **A01/A07:** autorização por role; JWT validado pelo serviço.
+- **A01/A07:** autorização por role; ownership para cliente; JWT validado pelo serviço;
+  limite de tentativas no login; senha padrão do admin substituída por variável de ambiente.
 - **A02 (criptografia):** senha de staff com **BCrypt** (nunca em texto puro).
 - **A03 (validação):** `@Valid` nos DTOs; CPF/CNPJ e placa validados (dígitos
   verificadores/regex); acesso a dados via Spring Data JPA parametrizado.
 - **A05:** headers `X-Frame-Options: DENY` + `nosniff`; `k8s/secret.yaml` com
-  placeholders (`REPLACE_ME`), segredos reais via secret manager.
+  placeholders (`REPLACE_ME`) — os valores reais vêm dos secrets da org, montados pela pipeline.
 - **A09:** CPF mascarado no log (MDC).
 
 > Hotspot `java:S4502` (CSRF disabled) marcado **Safe**: API REST stateless com JWT.
@@ -176,22 +196,22 @@ Clientes — `/api/clients`:
 | Método | Rota | Descrição | Acesso |
 |---|---|---|---|
 | POST | `/api/clients` | Criar cliente | staff |
-| GET | `/api/clients` | Listar clientes ativos | cliente/staff |
-| GET | `/api/clients/{id}` | Buscar por ID | cliente/staff |
-| GET | `/api/clients/document/{document}` | Buscar por CPF ou CNPJ | cliente/staff |
+| GET | `/api/clients` | Listar clientes ativos | staff |
+| GET | `/api/clients/{id}` | Buscar por ID | cliente dono/staff |
+| GET | `/api/clients/document/{document}` | Buscar por CPF ou CNPJ | cliente dono/staff |
 | PUT | `/api/clients/{id}` | Atualizar nome/email/telefone | staff |
 | DELETE | `/api/clients/{id}` | Desativar (soft delete) | staff |
 
 Veículos — `/api/vehicles`:
 
-| Método | Rota | Descrição |
-|---|---|---|
-| POST | `/api/vehicles` | Criar veículo |
-| GET | `/api/vehicles/{id}` | Buscar por ID |
-| GET | `/api/vehicles/plate/{plate}` | Buscar por placa |
-| GET | `/api/vehicles/client/{clientId}` | Listar veículos de um cliente |
-| PUT | `/api/vehicles/{id}` | Atualizar |
-| DELETE | `/api/vehicles/{id}` | Desativar (soft delete) |
+| Método | Rota | Descrição | Acesso |
+|---|---|---|---|
+| POST | `/api/vehicles` | Criar veículo | staff |
+| GET | `/api/vehicles/{id}` | Buscar por ID | cliente dono/staff |
+| GET | `/api/vehicles/plate/{plate}` | Buscar por placa | cliente dono/staff |
+| GET | `/api/vehicles/client/{clientId}` | Listar veículos de um cliente | cliente dono/staff |
+| PUT | `/api/vehicles/{id}` | Atualizar | staff |
+| DELETE | `/api/vehicles/{id}` | Desativar (soft delete) | staff |
 
 Identidade (staff) — `/api/users`:
 
@@ -201,7 +221,8 @@ Identidade (staff) — `/api/users`:
 | POST | `/api/users/auth/validate` | Validar credenciais (uso interno da Lambda de auth) → `200 {email,roles}` ou `401` — **público** |
 
 > **Seed inicial:** a migration cria o usuário `admin@workbench.dev` (role `ADMIN`,
-> senha `admin123` — trocar em produção) para viabilizar o primeiro login de staff.
+> senha `admin123`) para viabilizar o primeiro login de staff. Com `ADMIN_INITIAL_PASSWORD`
+> definido, essa senha é trocada no primeiro start.
 
 ---
 
@@ -213,7 +234,10 @@ Identidade (staff) — `/api/users`:
 
 - **Gate JaCoCo 80%** no `verify`.
 - Integração com **Testcontainers PostgreSQL** (fluxo cliente→veículo + erros).
-- Cobertura atual: **~87%** (`target/site/jacoco/index.html`).
+- Unitários cobrem a regra de dono (cliente só vê o próprio cadastro/veículo), o limite de
+  login e a troca da senha do admin.
+- Cobertura atual (medida em 2026-11-11): **86,6% de linhas** e 62,8% de branches (`target/site/jacoco/index.html`).
+- Evidência por execução do CI: artefato `jacoco-report` do job `unit-test` (relatório HTML) e o Quality Gate do SonarCloud no job `code-analysis`.
 
 ---
 

@@ -13,7 +13,7 @@ public final class LicensePlate {
 
     public LicensePlate(String raw) {
         if (raw == null || raw.isBlank()) {
-            throw new IllegalArgumentException("License plate cannot be null or blank");
+            throw new IllegalArgumentException("Placa é obrigatória");
         }
         String normalized = NON_ALPHANUMERIC.matcher(raw).replaceAll("").toUpperCase();
         validate(normalized);
@@ -31,8 +31,8 @@ public final class LicensePlate {
     private static void validate(String plate) {
         if (!OLD_FORMAT.matcher(plate).matches() && !MERCOSUL_FORMAT.matcher(plate).matches()) {
             throw new IllegalArgumentException(
-                    "Invalid Brazilian license plate: '" + plate + "'. "
-                    + "Expected formats: ABC1234 (old) or ABC1D23 (Mercosul)");
+                    "Placa inválida: '" + plate + "'. "
+                    + "Formatos aceitos: ABC1234 (antigo) ou ABC1D23 (Mercosul).");
         }
     }
 

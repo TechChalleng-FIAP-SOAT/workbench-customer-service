@@ -18,6 +18,11 @@ spring:
 
 # JWT (HS256) — mesmo secret compartilhado pela plataforma (Lambda/os-service).
 # O Customer valida o token; a emissão é da Lambda de auth.
+# Senha que substitui a padrão (admin123) do admin semeado pela migration V2.
+# Só é aplicada enquanto o admin ainda usa a padrão. Vazio = só avisa no log.
+admin:
+  initial-password: ${ADMIN_INITIAL_PASSWORD:}
+
 jwt:
   secret: ${JWT_SECRET:akmsdkmasfnjsgknakmsdkmasdkmsadfkmdsakmdkmsadsa}
 

@@ -19,7 +19,7 @@ public final class VehicleDtos {
             @NotBlank String plate,
             @NotBlank String brand,
             @NotBlank String model,
-            @Min(1886) int year,
+            @NotNull @Min(1886) Integer year,
             String color,
             @NotNull VehicleType type) {}
 
@@ -27,7 +27,7 @@ public final class VehicleDtos {
             @NotBlank String plate,
             @NotBlank String brand,
             @NotBlank String model,
-            @Min(1886) int year,
+            @NotNull @Min(1886) Integer year,
             String color,
             @NotNull VehicleType type) {}
 

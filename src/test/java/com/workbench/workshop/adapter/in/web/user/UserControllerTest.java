@@ -1,6 +1,8 @@
 package com.workbench.workshop.adapter.in.web.user;
 
-import com.workbench.workshop.application.user.UserUseCases;
+import com.workbench.workshop.application.user.AuthenticateUserUseCase;
+import com.workbench.workshop.application.user.BadCredentialsException;
+import com.workbench.workshop.application.user.SignUpUseCase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -12,21 +14,23 @@ import static org.mockito.Mockito.*;
 
 class UserControllerTest {
 
-    private UserUseCases useCases;
+    private SignUpUseCase signUp;
+    private AuthenticateUserUseCase authenticateUser;
     private UserController controller;
 
     @BeforeEach
     void setUp() {
-        useCases = mock(UserUseCases.class);
-        controller = new UserController(useCases);
+        signUp = mock(SignUpUseCase.class);
+        authenticateUser = mock(AuthenticateUserUseCase.class);
+        controller = new UserController(signUp, authenticateUser);
     }
 
     @Test
     void signUpReturns201WithBody() {
-        when(useCases.signUp("a@x.com", "segredo123", Set.of("ADMIN")))
-                .thenReturn(new UserUseCases.SignUpResult(1L, "a@x.com", Set.of("ADMIN")));
+        when(signUp.execute("a@x.com", "segredo123", Set.of("ADMIN")))
+                .thenReturn(new SignUpUseCase.Result(1L, "a@x.com", Set.of("ADMIN")));
 
-        var res = controller.signUp(new UserController.SignUpRequest("a@x.com", "segredo123", Set.of("ADMIN")));
+        var res = controller.signUp(new UserDtos.SignUpRequest("a@x.com", "segredo123", Set.of("ADMIN")));
 
         assertEquals(201, res.getStatusCode().value());
         assertEquals("a@x.com", res.getBody().email());
@@ -35,10 +39,10 @@ class UserControllerTest {
 
     @Test
     void validateReturns200WithRoles() {
-        when(useCases.authenticate("a@x.com", "segredo123"))
-                .thenReturn(new UserUseCases.AuthResult("a@x.com", Set.of("TECHNICIAN")));
+        when(authenticateUser.execute("a@x.com", "segredo123"))
+                .thenReturn(new AuthenticateUserUseCase.Result("a@x.com", Set.of("TECHNICIAN")));
 
-        var res = controller.validate(new UserController.AuthValidateRequest("a@x.com", "segredo123"));
+        var res = controller.validate(new UserDtos.AuthValidateRequest("a@x.com", "segredo123"));
 
         assertEquals(200, res.getStatusCode().value());
         assertEquals("a@x.com", res.getBody().email());
@@ -47,9 +51,9 @@ class UserControllerTest {
 
     @Test
     void validatePropagatesBadCredentials() {
-        when(useCases.authenticate(any(), any()))
-                .thenThrow(new UserUseCases.BadCredentialsException());
-        assertThrows(UserUseCases.BadCredentialsException.class,
-                () -> controller.validate(new UserController.AuthValidateRequest("a@x.com", "errada")));
+        when(authenticateUser.execute(any(), any()))
+                .thenThrow(new BadCredentialsException());
+        assertThrows(BadCredentialsException.class,
+                () -> controller.validate(new UserDtos.AuthValidateRequest("a@x.com", "errada")));
     }
 }

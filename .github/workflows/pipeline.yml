@@ -112,6 +112,8 @@ jobs:
       DB_USERNAME_CUSTOMER: ${{ secrets.DB_USERNAME_CUSTOMER || 'customer' }}
       DB_PASSWORD_CUSTOMER: ${{ secrets.DB_PASSWORD_CUSTOMER }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      # Opcional: substitui a senha padrão (admin123) do admin semeado, no 1º start.
+      ADMIN_INITIAL_PASSWORD: ${{ secrets.ADMIN_INITIAL_PASSWORD }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Validar secrets obrigatórios
@@ -173,6 +175,7 @@ jobs:
             --from-literal SPRING_DATASOURCE_USERNAME="${DB_USERNAME_CUSTOMER}" \
             --from-literal SPRING_DATASOURCE_PASSWORD="${DB_PASSWORD_CUSTOMER}" \
             --from-literal JWT_SECRET="${JWT_SECRET}" \
+            --from-literal ADMIN_INITIAL_PASSWORD="${ADMIN_INITIAL_PASSWORD}" \
             --from-literal DD_API_KEY="${DD_API_KEY}" \
             --dry-run=client -o yaml | kubectl apply -f -
           kubectl apply -f k8s/app.yaml

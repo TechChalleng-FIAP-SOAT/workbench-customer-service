@@ -50,6 +50,14 @@ public class User {
         return u;
     }
 
+    /** Troca a senha (hash já calculado, ex.: BCrypt). */
+    public void changePassword(String newPasswordHash) {
+        if (newPasswordHash == null || newPasswordHash.isBlank()) {
+            throw new IllegalArgumentException("Senha é obrigatória.");
+        }
+        this.passwordHash = newPasswordHash;
+    }
+
     public Long getId() { return id; }
     public String getEmail() { return email; }
     public String getPasswordHash() { return passwordHash; }
