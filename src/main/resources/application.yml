@@ -4,7 +4,7 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:15434/customer}
     username: ${SPRING_DATASOURCE_USERNAME:dbadmin}
-    password: ${SPRING_DATASOURCE_PASSWORD:senha-super-segura}
+    password: ${SPRING_DATASOURCE_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -19,12 +19,14 @@ spring:
 # JWT (HS256) — mesmo secret compartilhado pela plataforma (Lambda/os-service).
 # O Customer valida o token; a emissão é da Lambda de auth.
 # Senha que substitui a padrão (admin123) do admin semeado pela migration V2.
-# Só é aplicada enquanto o admin ainda usa a padrão. Vazio = só avisa no log.
+# Só é aplicada enquanto o admin ainda usa a padrão. Sem ela (ou com menos de 8
+# caracteres), o serviço NÃO sobe — exceto no perfil local (application-local.yml).
 admin:
   initial-password: ${ADMIN_INITIAL_PASSWORD:}
+  initial-password-required: true
 
 jwt:
-  secret: ${JWT_SECRET:akmsdkmasfnjsgknakmsdkmasdkmsadfkmdsakmdkmsadsa}
+  secret: ${JWT_SECRET}
 
 logging:
   file:

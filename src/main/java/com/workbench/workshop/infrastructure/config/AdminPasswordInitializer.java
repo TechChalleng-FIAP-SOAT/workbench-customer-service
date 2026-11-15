@@ -13,7 +13,11 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Troca a senha padrão do admin semeado pela migration V2 ({@code admin123}) pela de
  * {@code ADMIN_INITIAL_PASSWORD}, no start. Só age enquanto o admin ainda usa a senha
- * padrão — uma senha já trocada nunca é sobrescrita. Sem a variável, apenas avisa.
+ * padrão — uma senha já trocada nunca é sobrescrita.
+ *
+ * <p>Fora do perfil local ({@code admin.initial-password-required=true}, o padrão), o
+ * serviço <b>não sobe</b> com o admin na senha padrão e sem uma senha válida: falhar o
+ * start é melhor que expor {@code admin123}. No perfil local, apenas avisa.
  */
 @Component
 @RequiredArgsConstructor
@@ -29,6 +33,9 @@ public class AdminPasswordInitializer implements ApplicationRunner {
     @Value("${admin.initial-password:}")
     private String initialPassword;
 
+    @Value("${admin.initial-password-required:true}")
+    private boolean initialPasswordRequired;
+
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
@@ -36,16 +43,23 @@ public class AdminPasswordInitializer implements ApplicationRunner {
                 .filter(admin -> passwordEncoder.matches(SEEDED_PASSWORD, admin.getPasswordHash()))
                 .ifPresent(admin -> {
                     if (initialPassword == null || initialPassword.isBlank()) {
-                        log.warn("Admin {} ainda usa a senha padrão; defina ADMIN_INITIAL_PASSWORD.", SEEDED_ADMIN);
+                        refuse("Admin " + SEEDED_ADMIN + " ainda usa a senha padrão; defina ADMIN_INITIAL_PASSWORD.");
                         return;
                     }
                     if (initialPassword.length() < 8) {
-                        log.warn("ADMIN_INITIAL_PASSWORD ignorada: use ao menos 8 caracteres.");
+                        refuse("ADMIN_INITIAL_PASSWORD ignorada: use ao menos 8 caracteres.");
                         return;
                     }
                     admin.changePassword(passwordEncoder.encode(initialPassword));
                     userRepository.save(admin);
                     log.info("Senha padrão do admin {} substituída pela de ADMIN_INITIAL_PASSWORD.", SEEDED_ADMIN);
                 });
+    }
+
+    private void refuse(String reason) {
+        if (initialPasswordRequired) {
+            throw new IllegalStateException(reason + " O serviço não sobe com a senha padrão fora do perfil local.");
+        }
+        log.warn(reason);
     }
 }

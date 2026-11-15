@@ -116,8 +116,8 @@ unit-test ──▶ code-analysis ──▶ build ──▶ docker-build-push �
 
 Secrets/variáveis comuns aos serviços (`DOCKER_*`, `SONAR_TOKEN`, `AWS_*`, `USE_AWS`) —
 ver o README do `workbench-os-service`. Próprios deste serviço: `DB_URL_CUSTOMER_<ENV>`,
-`DB_USERNAME_CUSTOMER`, `DB_PASSWORD_CUSTOMER`, `JWT_SECRET` e, recomendado,
-`ADMIN_INITIAL_PASSWORD`. O job `deploy-aws` monta o Secret do pod a partir deles (o
+`DB_USERNAME_CUSTOMER`, `DB_PASSWORD_CUSTOMER`, `JWT_SECRET` e
+`ADMIN_INITIAL_PASSWORD` (necessário no 1º deploy; o serviço não sobe com o admin em `admin123`). O job `deploy-aws` monta o Secret do pod a partir deles (o
 `k8s/secret.yaml` só tem placeholders) e falha no início se faltar um obrigatório.
 
 ---
@@ -126,7 +126,7 @@ ver o README do `workbench-os-service`. Próprios deste serviço: `DB_URL_CUSTOM
 
 | Tecnologia | Finalidade |
 |---|---|
-| Java 21 + Spring Boot 4.0.5 | Framework web e DI |
+| Java 21 + Spring Boot 4.0.9 | Framework web e DI |
 | PostgreSQL 16 + Flyway | Banco próprio (SQL) + migrations |
 | Micrometer + Datadog | Métricas e observabilidade |
 | SpringDoc OpenAPI | Swagger UI |
@@ -138,17 +138,22 @@ ver o README do `workbench-os-service`. Próprios deste serviço: `DB_URL_CUSTOM
 ## Como executar localmente
 
 ```bash
-./mvnw spring-boot:run
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
+
+> **Sem valores padrão para segredos.** Fora do perfil `local` (`JWT_SECRET`, a senha do banco e `ADMIN_INITIAL_PASSWORD`) são
+> obrigatórios: sem eles o serviço não sobe. O perfil `local` (`application-local.yml`)
+> traz os valores de desenvolvimento e é ativado pelo compose do `workbench-messaging`.
 
 O Flyway cria o schema (clientes, veículos e usuários) na subida.
 
 | Variável | Default | Descrição |
 |---|---|---|
 | `SPRING_DATASOURCE_URL` | `jdbc:postgresql://localhost:15434/customer` | Banco próprio |
-| `SPRING_DATASOURCE_USERNAME` / `_PASSWORD` | `dbadmin` / dev | Credenciais do banco |
-| `JWT_SECRET` | valor de dev | Segredo HS256 compartilhado |
-| `ADMIN_INITIAL_PASSWORD` | — | (recomendado) substitui `admin123` do admin semeado no start; só enquanto ele ainda usa a padrão, nunca sobrescreve senha já trocada. Vazio = só avisa no log |
+| `SPRING_DATASOURCE_USERNAME` | `dbadmin` | Usuário do banco |
+| `SPRING_DATASOURCE_PASSWORD` | — (obrigatório; dev no perfil `local`) | Senha do banco |
+| `JWT_SECRET` | — (obrigatório; dev no perfil `local`) | Segredo HS256 compartilhado |
+| `ADMIN_INITIAL_PASSWORD` | — (obrigatório fora do perfil `local`) | Substitui `admin123` do admin semeado no start; só enquanto ele ainda usa a padrão, nunca sobrescreve senha já trocada. Com o admin na senha padrão e esta variável vazia (ou com menos de 8 caracteres), o serviço **não sobe**; no perfil `local` só avisa |
 
 ---
 
@@ -156,6 +161,13 @@ O Flyway cria o schema (clientes, veículos e usuários) na subida.
 
 Manifests em `k8s/`. Deploy automatizado pelo pipeline (`deploy-aws`, quando
 `USE_AWS=true`) no cluster `workbench-platform-<branch>`, namespace `customer-service`.
+
+O que os manifests garantem:
+- **Rede:** o Service é um **NLB interno** (`aws-load-balancer-internal`), alcançável só de dentro da VPC. O tráfego de fora entra pelo API Gateway (VPC Link + authorizer JWT); Swagger e actuator não ficam na internet. Se o Service já existia como LB público, o pipeline o recria uma vez (o esquema de um LB não muda depois de criado). Uma `NetworkPolicy` deixa entrar só a porta 8080 (vale com NetworkPolicy ligada no VPC CNI).
+- **Imagem:** o pipeline troca o `REPLACE_IMAGE` do `app.yaml` pela tag do commit antes do `kubectl apply` (um rollout por deploy). Não há tag `:latest`; o `dd-java-agent` injetado pelo Datadog tem versão fixa (`v1.68.2`).
+- **Pods:** usuário não-root (UID 10001), sem escalar privilégio, sem capabilities, sistema de arquivos somente leitura (só `/tmp` gravável), `seccomp` padrão. A subida tem um `startupProbe` (até 5 min); liveness e readiness começam depois. A JVM usa até 75% da memória do container (`-XX:MaxRAMPercentage=75.0`).
+- **Escala:** o número de réplicas é só do HPA (o `Deployment` não fixa `replicas`), e um `PodDisruptionBudget` tira no máximo 1 pod por vez numa troca de nó.
+- **Banco:** o RDS do `workbench-database` (URL e credenciais no Secret). O Postgres in-cluster saiu do `app.yaml` e ficou em `k8s/postgres-local.yaml`, só para testar num cluster sem RDS (o pipeline não aplica e remove o que sobrou de deploys antigos).
 
 ---
 
@@ -221,8 +233,9 @@ Identidade (staff) — `/api/users`:
 | POST | `/api/users/auth/validate` | Validar credenciais (uso interno da Lambda de auth) → `200 {email,roles}` ou `401` — **público** |
 
 > **Seed inicial:** a migration cria o usuário `admin@workbench.dev` (role `ADMIN`,
-> senha `admin123`) para viabilizar o primeiro login de staff. Com `ADMIN_INITIAL_PASSWORD`
-> definido, essa senha é trocada no primeiro start.
+> senha `admin123`) para viabilizar o primeiro login de staff. Fora do perfil `local`,
+> `ADMIN_INITIAL_PASSWORD` é obrigatório: essa senha é trocada no primeiro start e o serviço
+> não sobe enquanto o admin continuar com `admin123`.
 
 ---
 
@@ -236,7 +249,7 @@ Identidade (staff) — `/api/users`:
 - Integração com **Testcontainers PostgreSQL** (fluxo cliente→veículo + erros).
 - Unitários cobrem a regra de dono (cliente só vê o próprio cadastro/veículo), o limite de
   login e a troca da senha do admin.
-- Cobertura atual (medida em 2026-11-11): **86,6% de linhas** e 62,8% de branches (`target/site/jacoco/index.html`).
+- Cobertura atual (medida em 2026-11-15): **87,0% de linhas** e 64,0% de branches (`target/site/jacoco/index.html`).
 - Evidência por execução do CI: artefato `jacoco-report` do job `unit-test` (relatório HTML) e o Quality Gate do SonarCloud no job `code-analysis`.
 
 ---

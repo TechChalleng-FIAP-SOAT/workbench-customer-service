@@ -11,7 +11,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.Optional;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -49,6 +51,27 @@ class AdminPasswordInitializerTest {
         initializer.run(null);
 
         verify(repository, never()).save(any());
+    }
+
+    @Test
+    void refusesToStartWithTheDefaultPasswordOutsideLocal() {
+        ReflectionTestUtils.setField(initializer, "initialPasswordRequired", true);
+
+        ReflectionTestUtils.setField(initializer, "initialPassword", "");
+        assertThrows(IllegalStateException.class, () -> initializer.run(null));
+
+        ReflectionTestUtils.setField(initializer, "initialPassword", "curta");
+        assertThrows(IllegalStateException.class, () -> initializer.run(null));
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void requiredDoesNotBlockAnAlreadyChangedPassword() {
+        ReflectionTestUtils.setField(initializer, "initialPasswordRequired", true);
+        ReflectionTestUtils.setField(initializer, "initialPassword", "");
+        admin.changePassword(encoder.encode("JaTrocada#1"));
+
+        assertDoesNotThrow(() -> initializer.run(null));
     }
 
     @Test
