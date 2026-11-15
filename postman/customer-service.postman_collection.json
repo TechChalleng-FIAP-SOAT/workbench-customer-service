@@ -1,11 +1,11 @@
 {
   "info": {
     "name": "Workbench - Customer Service",
-    "description": "Collection do microsserviço de Clientes e Veículos (Fase 4). Cadastro base usado pelo fluxo da Ordem de Serviço. Variáveis: baseUrl (default http://localhost:8080), token (JWT HS256).",
+    "description": "Collection do microsserviço de Clientes e Veículos (Fase 4). Cadastro base usado pelo fluxo da Ordem de Serviço. Variáveis: baseUrl (default http://localhost:8080), token (JWT HS256). baseUrl: http://localhost:8081 (serviço direto, compose local) ou http://localhost:8000 (gateway local). Na AWS os serviços têm NLB interno: use a invoke_url do API Gateway como baseUrl e o token do POST /auth/login.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    {"key": "baseUrl", "value": "http://localhost:8080"},
+    {"key": "baseUrl", "value": "http://localhost:8081"},
     {"key": "token", "value": ""},
     {"key": "clientId", "value": "1"}
   ],

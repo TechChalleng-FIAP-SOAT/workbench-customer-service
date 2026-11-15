@@ -1,5 +1,6 @@
 package com.workbench.workshop.application.user;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
@@ -26,10 +27,13 @@ public class LoginAttemptLimiter {
     private final Map<String, Attempts> attempts = new ConcurrentHashMap<>();
     private final Clock clock;
 
+    /** Construtor usado pelo Spring (relógio do sistema). */
+    @Autowired
     public LoginAttemptLimiter() {
         this(Clock.systemUTC());
     }
 
+    /** Para testes: relógio controlado. */
     LoginAttemptLimiter(Clock clock) {
         this.clock = clock;
     }
