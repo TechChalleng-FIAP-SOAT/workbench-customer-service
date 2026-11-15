@@ -76,6 +76,14 @@ outro) e passaram a consultar este serviço por REST.
 
 ---
 
+## Por que este banco
+
+**PostgreSQL**, porque os dados são relacionais e o banco garante as regras: veículo sempre pertence a um cliente (chave estrangeira) e CPF/CNPJ, placa e e-mail de usuário são únicos.
+
+As demais decisões (MongoDB no execution, Saga orquestrada, SNS/SQS, EKS, Lambda…) estão respondidas uma a uma em `workbench-technical-documentation/01 - Arquitetura/Decisoes de Arquitetura.md`, com links para as ADRs.
+
+---
+
 ## Arquitetura da aplicação (hexagonal)
 
 ```
