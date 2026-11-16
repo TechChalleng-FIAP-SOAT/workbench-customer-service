@@ -16,7 +16,6 @@ spring:
     enabled: true
     baseline-on-migrate: true
 
-# JWT (HS256) — mesmo secret compartilhado pela plataforma (Lambda/os-service).
 # O Customer valida o token; a emissão é da Lambda de auth.
 # Senha que substitui a padrão (admin123) do admin semeado pela migration V2.
 # Só é aplicada enquanto o admin ainda usa a padrão. Sem ela (ou com menos de 8
@@ -26,7 +25,10 @@ admin:
   initial-password-required: true
 
 jwt:
-  secret: ${JWT_SECRET}
+  # Chave PÚBLICA da Lambda de autenticação (RS256), Base64 do DER. Sem padrão: sem ela não sobe.
+  public-key: ${JWT_PUBLIC_KEY}
+  # Chave pública do token de serviço do os-service (só o customer aceita esse token).
+  service-public-key: ${JWT_SERVICE_PUBLIC_KEY}
 
 logging:
   file:

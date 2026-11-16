@@ -110,7 +110,10 @@ jobs:
       DB_URL_CUSTOMER: ${{ github.ref_name == 'main' && secrets.DB_URL_CUSTOMER_MAIN || secrets.DB_URL_CUSTOMER_DEVELOP }}
       DB_USERNAME_CUSTOMER: ${{ secrets.DB_USERNAME_CUSTOMER || 'customer' }}
       DB_PASSWORD_CUSTOMER: ${{ secrets.DB_PASSWORD_CUSTOMER }}
-      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      # JWT RS256: só a chave PÚBLICA (o serviço verifica, não emite token).
+      JWT_PUBLIC_KEY: ${{ secrets.JWT_PUBLIC_KEY }}
+      # Chave pública do token de serviço do os-service (só o customer aceita).
+      JWT_SERVICE_PUBLIC_KEY: ${{ secrets.JWT_SERVICE_PUBLIC_KEY }}
       # Necessário no 1º deploy: troca a senha padrão (admin123) do admin semeado. Depois
       # disso pode faltar; quem barra a senha padrão é o próprio serviço, que não sobe com ela.
       ADMIN_INITIAL_PASSWORD: ${{ secrets.ADMIN_INITIAL_PASSWORD }}
@@ -119,7 +122,7 @@ jobs:
       - name: Validar secrets obrigatórios
         run: |
           missing=0
-          for v in DB_URL_CUSTOMER DB_USERNAME_CUSTOMER DB_PASSWORD_CUSTOMER JWT_SECRET; do
+          for v in DB_URL_CUSTOMER DB_USERNAME_CUSTOMER DB_PASSWORD_CUSTOMER JWT_PUBLIC_KEY JWT_SERVICE_PUBLIC_KEY; do
             if [ -z "${!v}" ]; then
               case "${v}" in
                 DB_URL_*) src="${v}_MAIN / ${v}_DEVELOP" ;;
@@ -182,7 +185,8 @@ jobs:
             --from-literal SPRING_DATASOURCE_URL="${DB_URL_CUSTOMER}" \
             --from-literal SPRING_DATASOURCE_USERNAME="${DB_USERNAME_CUSTOMER}" \
             --from-literal SPRING_DATASOURCE_PASSWORD="${DB_PASSWORD_CUSTOMER}" \
-            --from-literal JWT_SECRET="${JWT_SECRET}" \
+            --from-literal JWT_PUBLIC_KEY="${JWT_PUBLIC_KEY}" \
+            --from-literal JWT_SERVICE_PUBLIC_KEY="${JWT_SERVICE_PUBLIC_KEY}" \
             --from-literal ADMIN_INITIAL_PASSWORD="${ADMIN_INITIAL_PASSWORD}" \
             --from-literal DD_API_KEY="${DD_API_KEY}" \
             --dry-run=client -o yaml | kubectl apply -f -

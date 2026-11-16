@@ -124,7 +124,7 @@ unit-test ──▶ code-analysis ──▶ build ──▶ docker-build-push �
 
 Secrets/variáveis comuns aos serviços (`DOCKER_*`, `SONAR_TOKEN`, `AWS_*`, `USE_AWS`) —
 ver o README do `workbench-os-service`. Próprios deste serviço: `DB_URL_CUSTOMER_<ENV>`,
-`DB_USERNAME_CUSTOMER`, `DB_PASSWORD_CUSTOMER`, `JWT_SECRET` e
+`DB_USERNAME_CUSTOMER`, `DB_PASSWORD_CUSTOMER`, `JWT_PUBLIC_KEY`, `JWT_SERVICE_PUBLIC_KEY` e
 `ADMIN_INITIAL_PASSWORD` (necessário no 1º deploy; o serviço não sobe com o admin em `admin123`). O job `deploy-aws` monta o Secret do pod a partir deles (o
 `k8s/secret.yaml` só tem placeholders) e falha no início se faltar um obrigatório.
 
@@ -149,7 +149,7 @@ ver o README do `workbench-os-service`. Próprios deste serviço: `DB_URL_CUSTOM
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-> **Sem valores padrão para segredos.** Fora do perfil `local` (`JWT_SECRET`, a senha do banco e `ADMIN_INITIAL_PASSWORD`) são
+> **Sem valores padrão para segredos.** Fora do perfil `local` (`JWT_PUBLIC_KEY`, a senha do banco e `ADMIN_INITIAL_PASSWORD`) são
 > obrigatórios: sem eles o serviço não sobe. O perfil `local` (`application-local.yml`)
 > traz os valores de desenvolvimento e é ativado pelo compose do `workbench-messaging`.
 
@@ -160,7 +160,8 @@ O Flyway cria o schema (clientes, veículos e usuários) na subida.
 | `SPRING_DATASOURCE_URL` | `jdbc:postgresql://localhost:15434/customer` | Banco próprio |
 | `SPRING_DATASOURCE_USERNAME` | `dbadmin` | Usuário do banco |
 | `SPRING_DATASOURCE_PASSWORD` | — (obrigatório; dev no perfil `local`) | Senha do banco |
-| `JWT_SECRET` | — (obrigatório; dev no perfil `local`) | Segredo HS256 compartilhado |
+| `JWT_PUBLIC_KEY` | — (obrigatório; dev no perfil `local`) | Chave **pública** RS256 da Lambda de login: o serviço verifica token, não emite |
+| `JWT_SERVICE_PUBLIC_KEY` | — (obrigatório; dev no perfil `local`) | Chave pública do token de serviço do os-service (só o customer aceita esse token) |
 | `ADMIN_INITIAL_PASSWORD` | — (obrigatório fora do perfil `local`) | Substitui `admin123` do admin semeado no start; só enquanto ele ainda usa a padrão, nunca sobrescreve senha já trocada. Com o admin na senha padrão e esta variável vazia (ou com menos de 8 caracteres), o serviço **não sobe**; no perfil `local` só avisa |
 
 ---
@@ -184,7 +185,7 @@ O que os manifests garantem:
 ### Segurança (JWT)
 
 Defesa em profundidade: o serviço **valida o JWT por conta própria** (Spring Security +
-filtro HS256 com o `JWT_SECRET` compartilhado), inclusive nas chamadas internas de outros
+filtro RS256 com a chave pública da Lambda), inclusive nas chamadas internas de outros
 serviços. Rotas **públicas** (sem token): `GET /actuator/health*`, Swagger/OpenAPI e
 `POST /api/users/auth/validate` (a Lambda de auth valida credenciais aqui **antes** de
 emitir o token). `POST /api/users/signup` exige **ADMIN**. A **listagem de todos os
@@ -257,7 +258,7 @@ Identidade (staff) — `/api/users`:
 - Integração com **Testcontainers PostgreSQL** (fluxo cliente→veículo + erros).
 - Unitários cobrem a regra de dono (cliente só vê o próprio cadastro/veículo), o limite de
   login e a troca da senha do admin.
-- Cobertura atual (medida em 2026-11-15): **87,0% de linhas** e 64,0% de branches (`target/site/jacoco/index.html`).
+- Cobertura atual (medida em 2026-11-16): **86,4% de linhas** e 64,0% de branches (`target/site/jacoco/index.html`).
 - Evidência por execução do CI: artefato `jacoco-report` do job `unit-test` (relatório HTML) e o Quality Gate do SonarCloud no job `code-analysis`.
 
 ---

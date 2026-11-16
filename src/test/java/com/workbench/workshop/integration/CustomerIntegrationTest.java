@@ -1,8 +1,7 @@
 package com.workbench.workshop.integration;
 
+import com.workbench.workshop.support.TestKeys;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,8 +17,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
+import java.security.PrivateKey;
 import java.util.Date;
 import java.util.List;
 
@@ -50,13 +48,11 @@ class CustomerIntegrationTest {
     @Autowired private MockMvc mockMvc;
     private final ObjectMapper mapper = new ObjectMapper();
 
-    private static final String SECRET = "akmsdkmasfnjsgknakmsdkmasdkmsadfkmdsakmdkmsadsa";
-
     /** Token staff ADMIN (as rotas protegidas exigem token após a Estratégia 2). */
     private static String bearer() {
-        SecretKey key = Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
+        PrivateKey key = TestKeys.authPrivateKey();
         long now = System.currentTimeMillis();
-        String token = Jwts.builder()
+        String token = TestKeys.authToken()
                 .subject("admin@workbench.dev")
                 .claim("roles", List.of("ADMIN"))
                 .issuedAt(new Date(now))
