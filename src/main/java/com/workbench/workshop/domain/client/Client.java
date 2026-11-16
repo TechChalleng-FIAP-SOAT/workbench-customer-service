@@ -21,9 +21,9 @@ public class Client {
     protected Client() {}
 
     public static Client create(String name, String rawDocument, String email, String phone) {
-        Objects.requireNonNull(name, "Name is required");
+        Objects.requireNonNull(name, "Nome é obrigatório");
         if (name.isBlank()) {
-            throw new IllegalArgumentException("Name cannot be blank");
+            throw new IllegalArgumentException("Nome não pode ficar em branco");
         }
         var client = new Client();
         client.name = name.strip().toUpperCase();
@@ -50,9 +50,9 @@ public class Client {
     }
 
     public void update(String name, String email, String phone) {
-        Objects.requireNonNull(name, "Name is required");
+        Objects.requireNonNull(name, "Nome é obrigatório");
         if (name.isBlank()) {
-            throw new IllegalArgumentException("Name cannot be blank");
+            throw new IllegalArgumentException("Nome não pode ficar em branco");
         }
         this.name = name.strip();
         this.email = email;

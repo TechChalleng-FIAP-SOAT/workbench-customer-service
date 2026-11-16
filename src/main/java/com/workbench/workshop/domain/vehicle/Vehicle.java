@@ -25,8 +25,8 @@ public class Vehicle {
 
     public static Vehicle create(Long clientId, String rawPlate, String brand,
                                   String model, int year, String color, VehicleType type) {
-        Objects.requireNonNull(clientId, "Client ID is required");
-        Objects.requireNonNull(type, "Vehicle type is required");
+        Objects.requireNonNull(clientId, "Cliente é obrigatório");
+        Objects.requireNonNull(type, "Tipo do veículo é obrigatório");
         validateMandatoryFields(brand, model, year);
 
         var vehicle = new Vehicle();
@@ -62,7 +62,7 @@ public class Vehicle {
 
     public void update(String rawPlate, String brand, String model,
                        int year, String color, VehicleType type) {
-        Objects.requireNonNull(type, "Vehicle type is required");
+        Objects.requireNonNull(type, "Tipo do veículo é obrigatório");
         validateMandatoryFields(brand, model, year);
         this.plate = new LicensePlate(rawPlate);
         this.brand = brand.strip();
@@ -78,13 +78,13 @@ public class Vehicle {
 
     private static void validateMandatoryFields(String brand, String model, int year) {
         if (brand == null || brand.isBlank()) {
-            throw new IllegalArgumentException("Brand is required");
+            throw new IllegalArgumentException("Marca é obrigatória");
         }
         if (model == null || model.isBlank()) {
-            throw new IllegalArgumentException("Model is required");
+            throw new IllegalArgumentException("Modelo é obrigatório");
         }
         if (year < 1886) {
-            throw new IllegalArgumentException("Invalid vehicle year: " + year + " (minimum: 1886)");
+            throw new IllegalArgumentException("Ano do veículo inválido: " + year + " (mínimo: 1886)");
         }
     }
 }

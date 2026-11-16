@@ -13,7 +13,7 @@ public final class Cpf {
 
     public Cpf(String raw) {
         if (raw == null) {
-            throw new IllegalArgumentException("CPF cannot be null");
+            throw new IllegalArgumentException("CPF é obrigatório");
         }
         String normalized = NON_DIGIT.matcher(raw).replaceAll("");
         validate(normalized);
@@ -33,10 +33,10 @@ public final class Cpf {
 
     private static void validate(String cpf) {
         if (cpf.length() != 11) {
-            throw new IllegalArgumentException("CPF must have 11 digits, got: " + cpf.length());
+            throw new IllegalArgumentException("CPF deve ter 11 dígitos, recebido: " + cpf.length());
         }
         if (cpf.chars().distinct().count() == 1) {
-            throw new IllegalArgumentException("CPF cannot have all identical digits");
+            throw new IllegalArgumentException("CPF não pode ter todos os dígitos iguais");
         }
 
         int sum = 0;
@@ -46,7 +46,7 @@ public final class Cpf {
         int firstDigit = 11 - (sum % 11);
         if (firstDigit >= 10) firstDigit = 0;
         if (firstDigit != (cpf.charAt(9) - '0')) {
-            throw new IllegalArgumentException("Invalid CPF: wrong first check digit");
+            throw new IllegalArgumentException("CPF inválido: primeiro dígito verificador incorreto");
         }
 
         sum = 0;
@@ -56,7 +56,7 @@ public final class Cpf {
         int secondDigit = 11 - (sum % 11);
         if (secondDigit >= 10) secondDigit = 0;
         if (secondDigit != (cpf.charAt(10) - '0')) {
-            throw new IllegalArgumentException("Invalid CPF: wrong second check digit");
+            throw new IllegalArgumentException("CPF inválido: segundo dígito verificador incorreto");
         }
     }
 

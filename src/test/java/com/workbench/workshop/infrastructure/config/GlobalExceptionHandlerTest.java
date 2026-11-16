@@ -40,7 +40,22 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    void runtimeMapsTo422() {
-        assertEquals(422, handler.handleRuntime(new RuntimeException("boom")).getStatusCode().value());
+    void unexpectedMapsTo500WithoutLeakingTheMessage() {
+        var response = handler.handleUnexpected(new RuntimeException("SQL: relation users does not exist"));
+        assertEquals(500, response.getStatusCode().value());
+        assertEquals("Erro interno. Tente novamente mais tarde.", response.getBody().get("error"));
+    }
+
+    @Test
+    void frameworkErrorsKeepTheirStatus() {
+        var ex = new org.springframework.web.HttpRequestMethodNotSupportedException("TRACE");
+        assertEquals(405, handler.handleUnexpected(ex).getStatusCode().value());
+    }
+
+    @Test
+    void unreadableBodyMapsTo400() {
+        var ex = new org.springframework.http.converter.HttpMessageNotReadableException(
+                "JSON parse error", new org.springframework.mock.http.MockHttpInputMessage(new byte[0]));
+        assertEquals(400, handler.handleUnreadable(ex).getStatusCode().value());
     }
 }

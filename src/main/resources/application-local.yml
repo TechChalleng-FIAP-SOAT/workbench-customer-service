@@ -1,0 +1,16 @@
+# Perfil local (IDE e docker compose): valores de DESENVOLVIMENTO.
+# Fora dele não há valor padrão: sem JWT_SECRET, SPRING_DATASOURCE_PASSWORD ou ADMIN_INITIAL_PASSWORD o serviço não sobe.
+# Ative com SPRING_PROFILES_ACTIVE=local (o compose do workbench-messaging já ativa).
+spring:
+  datasource:
+    password: ${SPRING_DATASOURCE_PASSWORD:senha-super-segura}
+
+# Chaves JWT de DESENVOLVIMENTO. A pública do login vem de JWT_PUBLIC_KEY, gerada por máquina em
+# workbench-messaging (scripts/dev-keys.sh grava no .env do compose); nunca usar na AWS.
+jwt:
+  public-key: ${JWT_PUBLIC_KEY}
+  service-public-key: ${JWT_SERVICE_PUBLIC_KEY:MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA6vOcHd1B7NFaNIqVf7wwvf0/4046PgFgSvGBqauJrwGuOK4Vhe+/70vgAjA05cVK9OM9mOPAlReLcoZi/uboBquQOnnf89Hg0ZaikJURhh90cUAritDpSDEWiy3mREHt1fw18JS2p5fRyfhKX0sr7pqtTSrdSIlWmvk8KCCF+38u/Ov71bSg71/ovG4M/nDZtyG/qZkTHI87UJX7bum2Jun6I4S6P6Sh8npp/hjS162JQloEuYQFn71yB8n52PSEgt1h9tJYEff+LC9m2ZJqwS78TQUIV6CnNB3rBIriUHAJ+jC8nDqEwG6rDGSt5a8AivxcHw3x1sClRzqjWThr4QIDAQAB}
+
+# Localmente o admin semeado pode continuar com a senha padrão (admin123).
+admin:
+  initial-password-required: false

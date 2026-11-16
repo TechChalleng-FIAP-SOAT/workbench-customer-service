@@ -17,7 +17,7 @@ public final class Document {
 
     public static Document of(String raw) {
         if (raw == null) {
-            throw new IllegalArgumentException("Document cannot be null");
+            throw new IllegalArgumentException("Documento é obrigatório");
         }
         String normalized = NON_DIGIT.matcher(raw).replaceAll("");
 
@@ -31,7 +31,7 @@ public final class Document {
                 yield new Document(cnpj.getValue(), DocumentType.CNPJ);
             }
             default -> throw new IllegalArgumentException(
-                    "Document must have 11 digits (CPF) or 14 digits (CNPJ), got: " + normalized.length());
+                    "Documento deve ter 11 dígitos (CPF) ou 14 (CNPJ), recebido: " + normalized.length());
         };
     }
 

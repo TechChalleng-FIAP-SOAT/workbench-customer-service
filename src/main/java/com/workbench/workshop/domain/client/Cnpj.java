@@ -13,7 +13,7 @@ public final class Cnpj {
 
     public Cnpj(String raw) {
         if (raw == null) {
-            throw new IllegalArgumentException("CNPJ cannot be null");
+            throw new IllegalArgumentException("CNPJ é obrigatório");
         }
         String normalized = NON_DIGIT.matcher(raw).replaceAll("");
         validate(normalized);
@@ -34,20 +34,20 @@ public final class Cnpj {
 
     private static void validate(String cnpj) {
         if (cnpj.length() != 14) {
-            throw new IllegalArgumentException("CNPJ must have 14 digits, got: " + cnpj.length());
+            throw new IllegalArgumentException("CNPJ deve ter 14 dígitos, recebido: " + cnpj.length());
         }
         if (cnpj.chars().distinct().count() == 1) {
-            throw new IllegalArgumentException("CNPJ cannot have all identical digits");
+            throw new IllegalArgumentException("CNPJ não pode ter todos os dígitos iguais");
         }
 
         int firstDigit = calculateDigit(cnpj, WEIGHTS_FIRST, 12);
         if (firstDigit != (cnpj.charAt(12) - '0')) {
-            throw new IllegalArgumentException("Invalid CNPJ: wrong first check digit");
+            throw new IllegalArgumentException("CNPJ inválido: primeiro dígito verificador incorreto");
         }
 
         int secondDigit = calculateDigit(cnpj, WEIGHTS_SECOND, 13);
         if (secondDigit != (cnpj.charAt(13) - '0')) {
-            throw new IllegalArgumentException("Invalid CNPJ: wrong second check digit");
+            throw new IllegalArgumentException("CNPJ inválido: segundo dígito verificador incorreto");
         }
     }
 
