@@ -62,7 +62,7 @@
             "method": "POST",
             "header": [{"key": "Content-Type", "value": "application/json"}],
             "url": {"raw": "{{baseUrl}}/api/vehicles", "host": ["{{baseUrl}}"], "path": ["api", "vehicles"]},
-            "body": {"mode": "raw", "raw": "{\n  \"clientId\": {{clientId}},\n  \"plate\": \"ABC-1234\",\n  \"brand\": \"Volkswagen\",\n  \"model\": \"Gol\",\n  \"year\": 2018,\n  \"color\": \"Prata\",\n  \"type\": \"CARRO\"\n}"}
+            "body": {"mode": "raw", "raw": "{\n  \"clientId\": {{clientId}},\n  \"plate\": \"ABC-1234\",\n  \"brand\": \"Volkswagen\",\n  \"model\": \"Gol\",\n  \"year\": 2018,\n  \"color\": \"Prata\",\n  \"type\": \"CAR\"\n}"}
           }
         },
         {
@@ -83,7 +83,7 @@
             "method": "PUT",
             "header": [{"key": "Content-Type", "value": "application/json"}],
             "url": {"raw": "{{baseUrl}}/api/vehicles/1", "host": ["{{baseUrl}}"], "path": ["api", "vehicles", "1"]},
-            "body": {"mode": "raw", "raw": "{\n  \"plate\": \"ABC-1234\",\n  \"brand\": \"Volkswagen\",\n  \"model\": \"Gol G6\",\n  \"year\": 2019,\n  \"color\": \"Preto\",\n  \"type\": \"CARRO\"\n}"}
+            "body": {"mode": "raw", "raw": "{\n  \"plate\": \"ABC-1234\",\n  \"brand\": \"Volkswagen\",\n  \"model\": \"Gol G6\",\n  \"year\": 2019,\n  \"color\": \"Preto\",\n  \"type\": \"CAR\"\n}"}
           }
         },
         {
