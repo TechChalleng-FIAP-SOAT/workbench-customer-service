@@ -160,7 +160,7 @@ O Flyway cria o schema (clientes, veículos e usuários) na subida.
 | `SPRING_DATASOURCE_URL` | `jdbc:postgresql://localhost:15434/customer` | Banco próprio |
 | `SPRING_DATASOURCE_USERNAME` | `dbadmin` | Usuário do banco |
 | `SPRING_DATASOURCE_PASSWORD` | — (obrigatório; dev no perfil `local`) | Senha do banco |
-| `JWT_PUBLIC_KEY` | — (obrigatório; dev no perfil `local`) | Chave **pública** RS256 da Lambda de login: o serviço verifica token, não emite |
+| `JWT_PUBLIC_KEY` | — (obrigatório; em dev vem do `.env` do compose, gerado por `workbench-messaging/scripts/dev-keys.sh`) | Chave **pública** RS256 da Lambda de login: o serviço verifica token, não emite |
 | `JWT_SERVICE_PUBLIC_KEY` | — (obrigatório; dev no perfil `local`) | Chave pública do token de serviço do os-service (só o customer aceita esse token) |
 | `ADMIN_INITIAL_PASSWORD` | — (obrigatório fora do perfil `local`) | Substitui `admin123` do admin semeado no start; só enquanto ele ainda usa a padrão, nunca sobrescreve senha já trocada. Com o admin na senha padrão e esta variável vazia (ou com menos de 8 caracteres), o serviço **não sobe**; no perfil `local` só avisa |
 
