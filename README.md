@@ -1,5 +1,7 @@
 # workbench-customer-service — Customer Service
 
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=TechChalleng-FIAP-SOAT_workbench-customer-service&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=TechChalleng-FIAP-SOAT_workbench-customer-service) [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=TechChalleng-FIAP-SOAT_workbench-customer-service&metric=coverage)](https://sonarcloud.io/component_measures?id=TechChalleng-FIAP-SOAT_workbench-customer-service&metric=coverage)
+
 Microsserviço de **clientes, veículos e identidade (usuários staff)** da plataforma
 Workbench (Tech Challenge — FIAP Pós Tech, Fase 4). Dono do cadastro de clientes
 (CPF/CNPJ) e veículos, com as validações de domínio, e também do **cadastro de
@@ -259,6 +261,15 @@ Identidade (staff) — `/api/users`:
 - Unitários cobrem a regra de dono (cliente só vê o próprio cadastro/veículo), o limite de
   login e a troca da senha do admin.
 - Cobertura atual (medida em 2026-11-16): **86,4% de linhas** e 64,0% de branches (`target/site/jacoco/index.html`).
+
+  Relatório JaCoCo do `mvn verify` sobre a `main` em 2026-11-16 (a linha **Total** é a cobertura
+  do serviço; a coluna *Lines* mostra linhas perdidas/total):
+
+  ![Cobertura JaCoCo](docs/cobertura-jacoco.png)
+
+  O badge *Coverage* no topo vem do SonarCloud, que mede a branch `main` (o número dele é um
+  pouco diferente porque o Sonar conta linhas e condições juntas).
+
 - Evidência por execução do CI: artefato `jacoco-report` do job `unit-test` (relatório HTML) e o Quality Gate do SonarCloud no job `code-analysis`.
 
 ---
